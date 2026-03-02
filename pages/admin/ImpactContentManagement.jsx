@@ -97,16 +97,15 @@ function ImpactContentManagement() {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-            // Get fresh session from Supabase client
+            // Get token from localStorage directly (avoids getSession() which can hang)
             let accessToken = supabaseKey;
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.access_token) {
-                    accessToken = session.access_token;
+                const sessionData = JSON.parse(localStorage.getItem('sb-ifzbpqyuhnxbhdcnmvfs-auth-token') || '{}');
+                if (sessionData?.access_token) {
+                    accessToken = sessionData.access_token;
                 }
             } catch (e) {
-                const sessionData = JSON.parse(localStorage.getItem('sb-ifzbpqyuhnxbhdcnmvfs-auth-token') || '{}');
-                accessToken = sessionData?.access_token || supabaseKey;
+                console.warn('[ImpactCMS] loadAllData: Failed to read localStorage token');
             }
 
             const headers = {
@@ -158,17 +157,18 @@ function ImpactContentManagement() {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-        // Get fresh session from Supabase client (handles token refresh automatically)
+        // Get token from localStorage directly (avoids getSession() which can hang)
         let accessToken = supabaseKey;
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.access_token) {
-                accessToken = session.access_token;
+            const sessionData = JSON.parse(localStorage.getItem('sb-ifzbpqyuhnxbhdcnmvfs-auth-token') || '{}');
+            if (sessionData?.access_token) {
+                accessToken = sessionData.access_token;
+                console.log('[ImpactCMS] Using token from localStorage');
+            } else {
+                console.log('[ImpactCMS] No localStorage token, using anon key');
             }
         } catch (e) {
-            // Fallback to localStorage if getSession fails
-            const sessionData = JSON.parse(localStorage.getItem('sb-ifzbpqyuhnxbhdcnmvfs-auth-token') || '{}');
-            accessToken = sessionData?.access_token || supabaseKey;
+            console.warn('[ImpactCMS] Failed to read localStorage token:', e);
         }
 
         const url = `${supabaseUrl}/rest/v1/${table}${filter ? '?' + filter : ''}`;
@@ -182,12 +182,29 @@ function ImpactContentManagement() {
         const opts = { method, headers };
         if (body) opts.body = JSON.stringify(body);
 
-        const response = await fetch(url, opts);
-        if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`${method} ${table} failed: ${response.status} - ${errText}`);
+        console.log('[ImpactCMS] REST API call:', method, url);
+
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        opts.signal = controller.signal;
+
+        try {
+            const response = await fetch(url, opts);
+            clearTimeout(timeout);
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`${method} ${table} failed: ${response.status} - ${errText}`);
+            }
+            console.log('[ImpactCMS] REST API success:', method, table, response.status);
+            return response;
+        } catch (err) {
+            clearTimeout(timeout);
+            if (err.name === 'AbortError') {
+                throw new Error(`${method} ${table} timed out after 15 seconds`);
+            }
+            throw err;
         }
-        return response;
     };
 
     const handleDelete = async (id, table) => {
