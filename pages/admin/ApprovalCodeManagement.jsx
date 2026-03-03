@@ -22,7 +22,18 @@ const ApprovalCodeManagement = () => {
         'NEA/ACLC CC': 'NEA',
         'Academy of Alameda CC': 'AOA',
         'Island HS CC': 'IHS',
-        'Encinal Jr Sr High School': 'ENC'
+        'Encinal Jr Sr High School': 'ENC',
+        'Madison Park Academy Primary': 'MPP',
+        'Alameda Unified School District': 'AUS',
+        'Markham Elementary': 'MKE',
+        'Madison Park Academy': 'MPA',
+        'McClymonds High School': 'MCH',
+        'Hillside Elementary School': 'HES',
+        'Edendale Middle School': 'EDS',
+        'San Lorenzo High School': 'SLH',
+        'Garfield Elementary': 'GFE',
+        'Lodestar Charter School': 'LCS',
+        'Horace Mann Elementary': 'HME'
     };
 
     React.useEffect(() => {
