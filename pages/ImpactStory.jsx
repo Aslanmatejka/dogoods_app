@@ -240,9 +240,6 @@ function ImpactStory() {
                         Connecting good food to families in need through smart technology and community care
                     </p>
                     <div className="flex justify-center gap-4 md:gap-8 mt-8 flex-wrap">
-                        <span className="bg-[#2CABE3] text-white px-6 py-3 rounded-xl font-semibold shadow-md cursor-default">
-                            Impact Story
-                        </span>
                         <button onClick={() => document.getElementById('blog-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-[#2CABE3] hover:text-white transition-all">
                             Blog
                         </button>

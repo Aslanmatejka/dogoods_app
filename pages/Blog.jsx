@@ -48,9 +48,6 @@ function Blog() {
                     Stories, updates, and insights from our community
                 </p>
                 <div className="flex justify-center gap-4 md:gap-8 mt-8 flex-wrap">
-                    <Link to="/impact-story" className="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-[#2CABE3] hover:text-white transition-all">
-                        Impact Story
-                    </Link>
                     <span className="bg-[#2CABE3] text-white px-6 py-3 rounded-xl font-semibold shadow-md cursor-default">
                         Blog
                     </span>
