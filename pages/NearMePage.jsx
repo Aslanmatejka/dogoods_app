@@ -24,10 +24,9 @@ function NearMePage() {
     const [nearbyListings, setNearbyListings] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Fetch listings on mount AND when location/filters change
     useEffect(() => {
-        if (location) {
-            fetchNearbyListings();
-        }
+        fetchNearbyListings();
     }, [location, filters]);
 
     const fetchNearbyListings = async () => {
@@ -38,9 +37,18 @@ function NearMePage() {
             
             // Filter by distance if location is available
             if (location && location.latitude && location.longitude) {
-                const filtered = allListings.filter(listing => {
-                    if (!listing.latitude || !listing.longitude) return false;
-                    
+                // Separate listings with coordinates (can be distance-filtered) from those without
+                const withCoords = [];
+                const withoutCoords = [];
+                allListings.forEach(listing => {
+                    if (listing.latitude && listing.longitude) {
+                        withCoords.push(listing);
+                    } else {
+                        withoutCoords.push(listing);
+                    }
+                });
+
+                const filtered = withCoords.filter(listing => {
                     // Calculate distance using Haversine formula
                     const R = 6371; // Earth's radius in km
                     const dLat = (listing.latitude - location.latitude) * Math.PI / 180;
@@ -52,14 +60,15 @@ function NearMePage() {
                         Math.sin(dLon/2) * Math.sin(dLon/2);
                     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                     const distance = R * c;
+                    listing._distance = distance;
                     
                     // Convert radius from miles to km (1 mile = 1.60934 km)
                     const radiusKm = filters.radius * 1.60934;
                     return distance <= radiusKm;
                 });
                 
-                // Apply additional filters
-                let result = filtered;
+                // Combine: nearby items first (sorted by distance), then items without coords
+                let result = [...filtered.sort((a, b) => (a._distance || 0) - (b._distance || 0)), ...withoutCoords];
                 
                 if (filters.foodType) {
                     result = result.filter(listing => listing.category === filters.foodType);
@@ -119,21 +128,20 @@ function NearMePage() {
                     )}
                 </div>
 
+                {/* Always show listings — with filters when location available, all listings otherwise */}
                 {location && (
-                    <>
-                        <FilterPanel
-                            onFilterChange={handleFilterChange}
-                            initialRadius={filters.radius}
-                        />
-                        <div className="mt-6">
-                            <FoodList
-                                foods={nearbyListings}
-                                loading={loading}
-                                showDistance={true}
-                            />
-                        </div>
-                    </>
+                    <FilterPanel
+                        onFilterChange={handleFilterChange}
+                        initialRadius={filters.radius}
+                    />
                 )}
+                <div className={location ? "mt-6" : ""}>
+                    <FoodList
+                        foods={nearbyListings}
+                        loading={loading}
+                        showDistance={!!location}
+                    />
+                </div>
             </div>
         </MainLayout>
     );

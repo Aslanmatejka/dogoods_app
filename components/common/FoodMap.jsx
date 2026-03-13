@@ -186,12 +186,11 @@ function FoodMap({ onMarkerClick, showSignupPrompt = true }) {
                 setTimeout(() => reject(new Error('Food listings fetch timeout')), 8000)
             );
             
+            // Fetch ALL approved/active listings — we'll handle missing coordinates when placing markers
             const fetchPromise = supabase
                 .from('food_listings')
                 .select('*')
                 .in('status', ['approved', 'active'])
-                .not('latitude', 'is', null)
-                .not('longitude', 'is', null)
                 .limit(100);
 
             const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);

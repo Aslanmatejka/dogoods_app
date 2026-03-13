@@ -434,6 +434,7 @@ class DataService {
           status,
           expiry_date,
           location,
+          full_address,
           donor_name,
           donor_email,
           donor_phone,
@@ -509,17 +510,26 @@ class DataService {
         return q;
       };
 
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       // First attempt: include community_id
       try {
         const q1 = buildQuery(selectWithCommunity);
-        const { data, error } = await q1.order('created_at', { ascending: false });
+        const { data, error } = await q1.order('created_at', { ascending: false }).abortSignal(controller.signal);
+        clearTimeout(timeoutId);
         if (error) throw error;
         return data.map(listing => ({ ...listing, donor: listing.users }));
       } catch (err) {
+        clearTimeout(timeoutId);
         // If community_id column doesn't exist, retry without it
         if (err && err.code === '42703') {
+          const controller2 = new AbortController();
+          const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
           const q2 = buildQuery(selectWithoutCommunity);
-          const { data: data2, error: error2 } = await q2.order('created_at', { ascending: false });
+          const { data: data2, error: error2 } = await q2.order('created_at', { ascending: false }).abortSignal(controller2.signal);
+          clearTimeout(timeoutId2);
           if (error2) throw error2;
           return data2.map(listing => ({ ...listing, donor: listing.users }));
         }

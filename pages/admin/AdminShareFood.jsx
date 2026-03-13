@@ -3,9 +3,46 @@ import AdminLayout from './AdminLayout';
 import Button from '../../components/common/Button';
 import supabase from '../../utils/supabaseClient';
 import { useAuthContext } from '../../utils/AuthContext';
+import { API_CONFIG } from '../../utils/config';
 
 // Generic food image used for all bulk food listings
 const GENERIC_FOOD_IMAGE = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80';
+
+// Geocode an address using Mapbox to get latitude/longitude
+async function geocodeAddress(address) {
+    if (!address) return { latitude: null, longitude: null, location: null, donor_city: null, donor_state: null };
+    const token = API_CONFIG.MAPBOX?.ACCESS_TOKEN;
+    if (!token) {
+        console.warn('No Mapbox token — skipping geocoding');
+        return { latitude: null, longitude: null, location: null, donor_city: null, donor_state: null };
+    }
+    try {
+        const encoded = encodeURIComponent(address);
+        const resp = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${token}&limit=1&country=us`
+        );
+        if (!resp.ok) throw new Error('Geocoding request failed');
+        const json = await resp.json();
+        const feature = json.features?.[0];
+        if (!feature) return { latitude: null, longitude: null, location: address, donor_city: null, donor_state: null };
+        const [lng, lat] = feature.center;
+        // Extract city and state from context
+        const cityCtx = feature.context?.find(c => c.id?.startsWith('place'));
+        const stateCtx = feature.context?.find(c => c.id?.startsWith('region'));
+        const city = cityCtx?.text || feature.text || null;
+        const state = stateCtx?.short_code?.replace('US-', '') || stateCtx?.text || null;
+        return {
+            latitude: lat,
+            longitude: lng,
+            location: feature.place_name || address,
+            donor_city: city,
+            donor_state: state,
+        };
+    } catch (err) {
+        console.warn('Geocoding failed, continuing without coordinates:', err.message);
+        return { latitude: null, longitude: null, location: address, donor_city: null, donor_state: null };
+    }
+}
 
 // REST helper: bypasses Supabase JS client auth to avoid hanging
 async function supabaseRest(path, method, body = null, extraHeaders = {}) {
@@ -187,6 +224,9 @@ function AdminShareFood() {
             if (!communityId) { alert('⚠️ Please select a community.'); return; }
             if (!quantity) { alert('⚠️ Quantity (lb) is required.'); return; }
 
+            // Geocode address to get lat/lng for map display
+            const geo = await geocodeAddress(fullAddress);
+
             const newListing = {
                 title,
                 description: notes,
@@ -197,7 +237,12 @@ function AdminShareFood() {
                 pickup_by: pickupBy ? new Date(pickupBy + 'T17:00:00').toISOString() : null,
                 expiry_date: expiryDate || null,
                 full_address: fullAddress || null,
+                location: geo.location,
+                latitude: geo.latitude,
+                longitude: geo.longitude,
                 donor_name: donorName,
+                donor_city: geo.donor_city,
+                donor_state: geo.donor_state,
                 donor_type: 'organization',
                 listing_type: 'donation',
                 status: 'active',

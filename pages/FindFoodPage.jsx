@@ -202,9 +202,9 @@ function FindFoodPage({ initialCategory }) {
         if (!isSearchActive && searchTerm) {
             const searchTermLower = searchTerm.toLowerCase();
             result = result.filter(food => 
-                food.title.toLowerCase().includes(searchTermLower) ||
-                food.description.toLowerCase().includes(searchTermLower) ||
-                food.location.toLowerCase().includes(searchTermLower)
+                (food.title || '').toLowerCase().includes(searchTermLower) ||
+                (food.description || '').toLowerCase().includes(searchTermLower) ||
+                (typeof food.location === 'string' ? food.location : (food.location?.address || food.full_address || '')).toLowerCase().includes(searchTermLower)
             );
         }
 
@@ -223,22 +223,33 @@ function FindFoodPage({ initialCategory }) {
         // Location-based filtering
         if (currentLocation && filters.radius) {
             const maxDistance = parseInt(filters.radius);
-            result = result.filter(food => {
-                if (!food.location || !food.location.latitude || !food.location.longitude) {
-                    return false;
+            // Separate items with and without coordinates
+            const withCoords = [];
+            const withoutCoords = [];
+            result.forEach(food => {
+                const lat = food.latitude || food.location?.latitude;
+                const lng = food.longitude || food.location?.longitude;
+                if (lat && lng) {
+                    withCoords.push({ ...food, _lat: lat, _lng: lng });
+                } else {
+                    withoutCoords.push(food);
                 }
+            });
+
+            const nearby = withCoords.filter(food => {
                 const distance = calculateDistance(
                     currentLocation.latitude,
                     currentLocation.longitude,
-                    food.location.latitude,
-                    food.location.longitude
+                    food._lat,
+                    food._lng
                 );
-                food.distance = distance; // Add distance to food object for display
+                food.distance = distance;
                 return distance <= maxDistance;
             });
 
-            // Sort by distance when location is enabled
-            result.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+            // Sort nearby by distance, then append items without coordinates
+            nearby.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+            result = [...nearby, ...withoutCoords];
         }
 
         // Apply sorting based on selected option
@@ -404,7 +415,7 @@ function FindFoodPage({ initialCategory }) {
                             </div>
                         ) : (
                             filteredFoods.map((food) => (
-                                <div key={food.objectId} role="listitem">
+                                <div key={food.id || food.objectId} role="listitem">
                                     <FoodCard
                                         food={food}
                                         onClaim={handleClaim}
