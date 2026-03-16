@@ -8,6 +8,16 @@ import { API_CONFIG } from '../../utils/config';
 // Generic food image used for all bulk food listings
 const GENERIC_FOOD_IMAGE = 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80';
 
+// Calculate next Friday date as YYYY-MM-DD
+function getNextFriday() {
+    const today = new Date();
+    const day = today.getDay();
+    const daysUntil = day === 5 ? 7 : ((5 - day + 7) % 7) || 7;
+    const friday = new Date(today);
+    friday.setDate(today.getDate() + daysUntil);
+    return friday.toISOString().split('T')[0];
+}
+
 // Geocode an address using Mapbox to get latitude/longitude
 async function geocodeAddress(address) {
     if (!address) return { latitude: null, longitude: null, location: null, donor_city: null, donor_state: null };
@@ -128,7 +138,7 @@ function AdminShareFood() {
         try {
             const { data, error } = await supabase
                 .from('communities')
-                .select('id, name')
+                .select('id, name, location')
                 .eq('is_active', true)
                 .order('name', { ascending: true });
             if (error) throw error;
@@ -263,8 +273,8 @@ function AdminShareFood() {
             if (newRowRefs.current.title) newRowRefs.current.title.value = '';
             if (newRowRefs.current.quantity) newRowRefs.current.quantity.value = '';
             if (newRowRefs.current.unit) newRowRefs.current.unit.value = 'lb';
-            if (newRowRefs.current.pickup_by) newRowRefs.current.pickup_by.value = '';
-            if (newRowRefs.current.expiry_date) newRowRefs.current.expiry_date.value = '';
+            if (newRowRefs.current.pickup_by) newRowRefs.current.pickup_by.value = getNextFriday();
+            if (newRowRefs.current.expiry_date) newRowRefs.current.expiry_date.value = getNextFriday();
             if (newRowRefs.current.full_address) newRowRefs.current.full_address.value = '';
             if (newRowRefs.current.donor_name) newRowRefs.current.donor_name.value = '';
             if (newRowRefs.current.notes) newRowRefs.current.notes.value = '';
@@ -481,6 +491,12 @@ function AdminShareFood() {
                                         <select
                                             ref={el => newRowRefs.current.community_id = el}
                                             className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            onChange={(e) => {
+                                                const selected = communities.find(c => String(c.id) === e.target.value);
+                                                if (selected?.location && newRowRefs.current.full_address) {
+                                                    newRowRefs.current.full_address.value = selected.location;
+                                                }
+                                            }}
                                         >
                                             <option value="">Select Community</option>
                                             {communities.map(c => (
@@ -523,7 +539,7 @@ function AdminShareFood() {
                                     <td className="px-3 py-2">
                                         <UncontrolledCell
                                             type="date"
-                                            defaultValue=""
+                                            defaultValue={getNextFriday()}
                                             inputRef={el => newRowRefs.current.pickup_by = el}
                                             onBlur={() => {}}
                                         />
@@ -531,7 +547,7 @@ function AdminShareFood() {
                                     <td className="px-3 py-2">
                                         <UncontrolledCell
                                             type="date"
-                                            defaultValue=""
+                                            defaultValue={getNextFriday()}
                                             inputRef={el => newRowRefs.current.expiry_date = el}
                                             onBlur={() => {}}
                                         />
