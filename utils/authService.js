@@ -283,6 +283,9 @@ class AuthService {
 
       if (error) throw error
 
+      // Update local state immediately so auth context is ready before navigation
+      await this.setUser(data.user)
+
       return { success: true, user: data.user }
     } catch (error) {
       console.error('Sign in error:', error)

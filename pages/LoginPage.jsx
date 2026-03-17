@@ -8,7 +8,7 @@ import React from "react";
 function LoginPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { signIn, loading } = useAuth();
+    const { signIn } = useAuth();
     const { isAuthenticated, loading: authLoading } = useAuthContext();
     const [formData, setFormData] = React.useState({
         email: '',
@@ -17,6 +17,7 @@ function LoginPage() {
     });
 
     const [error, setError] = React.useState(null);
+    const [submitting, setSubmitting] = React.useState(false);
     const [successMessage, setSuccessMessage] = React.useState(null);
     const [showPassword, setShowPassword] = React.useState(false);
 
@@ -86,27 +87,24 @@ function LoginPage() {
         }
 
         setError(null);
+        setSubmitting(true);
         
         try {
             const { email, password } = formData;
             
             await signIn(email, password);
-            
-            // Check for redirect parameter
-            const redirectPath = searchParams.get('redirect') || '/dashboard';
-            
-            // Use setTimeout to avoid DOM manipulation during render
-            setTimeout(() => {
-                navigate(redirectPath);
-            }, 0);
+            // Navigation is handled by the useEffect watching isAuthenticated
+            // signIn now calls setUser() internally, so context will update and
+            // the useEffect will fire automatically
         } catch (error) {
             console.error('Login error:', error);
+            setSubmitting(false);
             
             // Handle specific Supabase auth errors
             if (error.message.includes('Invalid login credentials')) {
                 setError('Invalid email or password');
             } else if (error.message.includes('Email not confirmed')) {
-                setError('Please check your email and confirm your account');
+                setError('Please check your email and confirm your account before signing in.');
             } else {
                 setError('An error occurred during login. Please try again.');
             }
@@ -231,9 +229,14 @@ function LoginPage() {
                                     type="submit"
                                     variant="primary"
                                     className="w-full"
-                                    disabled={loading}
+                                    disabled={submitting}
                                 >
-                                    {loading ? 'Signing in...' : 'Sign in'}
+                                    {submitting ? (
+                                        <div className="flex items-center justify-center">
+                                            <i className="fas fa-spinner fa-spin mr-2" aria-hidden="true"></i>
+                                            Signing in...
+                                        </div>
+                                    ) : 'Sign in'}
                                 </Button>
                             </div>
                         </form>
