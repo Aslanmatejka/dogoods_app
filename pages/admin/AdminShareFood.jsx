@@ -363,7 +363,7 @@ function AdminShareFood() {
 
     return (
         <AdminLayout active="share-food">
-            <div className="p-6">
+            <div className="px-2 py-4">
                 {/* Header */}
                 <div className="mb-6 flex justify-between items-center">
                     <div>
