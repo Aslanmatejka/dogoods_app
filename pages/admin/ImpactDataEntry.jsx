@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import Button from '../../components/common/Button';
 import supabase from '../../utils/supabaseClient';
@@ -26,14 +27,17 @@ function UncontrolledCell({ defaultValue, onBlur, type = 'text', inputRef, class
 
 function ImpactDataEntry() {
     const { user } = useAuthContext();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get('tab') || 'organizations';
+    const dateFilter = searchParams.get('dateFilter') || 'current-week';
+    const setActiveTab = (tab) => setSearchParams(prev => { prev.set('tab', tab); return prev; }, { replace: true });
+    const setDateFilter = (filter) => setSearchParams(prev => { prev.set('dateFilter', filter); return prev; }, { replace: true });
     const [data, setData] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
-    const [activeTab, setActiveTab] = React.useState('organizations');
     const [communities, setCommunities] = React.useState([]);
     const [organizations, setOrganizations] = React.useState([]);
     const [showArchived, setShowArchived] = React.useState(false);
-    const [dateFilter, setDateFilter] = React.useState('current-week'); // 'current-week', 'current-month', 'all'
 
     // Refs for organization impact entries
     const orgRowRefs = React.useRef({
