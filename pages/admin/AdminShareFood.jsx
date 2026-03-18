@@ -104,7 +104,7 @@ const UncontrolledCell = ({ defaultValue, onBlur, type = 'text', inputRef, class
             const value = type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value;
             onBlur(value);
         }}
-        className={className || "w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"}
+        className={className || "w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"}
     />
 );
 
@@ -442,44 +442,44 @@ function AdminShareFood() {
                         <p className="mt-4 text-gray-600">Loading data...</p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-lg shadow overflow-x-auto overflow-y-auto" style={{maxHeight: 'calc(100vh - 280px)'}}>
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="bg-white rounded-lg shadow overflow-x-auto overflow-y-auto text-xs" style={{maxHeight: 'calc(100vh - 280px)'}}>
+                        <table className="min-w-full divide-y divide-gray-200 [&_td]:px-1 [&_td]:py-1">
                             <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[110px]">
                                         Date
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[280px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[130px]">
                                         Community
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[280px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[120px]">
                                         Food Name
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[110px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[65px]">
                                         Quantity
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[100px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[75px]">
                                         Packaging
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[110px]">
-                                        Weight/Package
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[75px]">
+                                        Wt/Pkg
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[55px]">
                                         Units
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-orange-600 uppercase tracking-wider min-w-[160px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-orange-600 uppercase tracking-wider min-w-[110px]">
                                         Expiry Date
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                                         Pickup Address
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[90px]">
                                         Donor
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[300px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                                         Description
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[50px]">
                                         Actions
                                     </th>
                                 </tr>
@@ -498,7 +498,7 @@ function AdminShareFood() {
                                     <td className="px-3 py-2">
                                         <select
                                             ref={el => newRowRefs.current.community_id = el}
-                                            className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             onChange={(e) => {
                                                 const selected = communities.find(c => String(c.id) === e.target.value);
                                                 if (selected?.location && newRowRefs.current.full_address) {
@@ -525,14 +525,14 @@ function AdminShareFood() {
                                             defaultValue=""
                                             inputRef={el => newRowRefs.current.quantity = el}
                                             onBlur={() => {}}
-                                            className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                         />
                                     </td>
                                     <td className="px-3 py-2">
                                         <select
                                             ref={el => newRowRefs.current.unit = el}
                                             defaultValue="items"
-                                            className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                         >
                                             <option value="items">items</option>
                                             <option value="servings">servings</option>
@@ -547,14 +547,14 @@ function AdminShareFood() {
                                             defaultValue=""
                                             inputRef={el => newRowRefs.current.weight_per_package = el}
                                             onBlur={() => {}}
-                                            className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                         />
                                     </td>
                                     <td className="px-3 py-2">
                                         <select
                                             ref={el => newRowRefs.current.weight_unit = el}
                                             defaultValue="lb"
-                                            className="w-full min-w-[70px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                         >
                                             <option value="lb">lb</option>
                                             <option value="kg">kg</option>
@@ -615,7 +615,7 @@ function AdminShareFood() {
                                             <select
                                                 value={row.community_id || ''}
                                                 onChange={(e) => handleUpdateRow(row.id, 'community_id', parseInt(e.target.value, 10) || null)}
-                                                className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             >
                                                 <option value="">Select Community</option>
                                                 {communities.map(c => (
@@ -634,14 +634,14 @@ function AdminShareFood() {
                                                 type="number"
                                                 defaultValue={row.quantity || 0}
                                                 onBlur={(val) => handleUpdateRow(row.id, 'quantity', val)}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
                                             <select
                                                 value={row.unit || 'items'}
                                                 onChange={(e) => handleUpdateRow(row.id, 'unit', e.target.value)}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             >
                                                 <option value="items">items</option>
                                                 <option value="servings">servings</option>
@@ -655,14 +655,14 @@ function AdminShareFood() {
                                                 type="number"
                                                 defaultValue={row.weight_per_package ?? ''}
                                                 onBlur={(val) => handleUpdateRow(row.id, 'weight_per_package', val !== '' ? parseFloat(val) : null)}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
                                             <select
                                                 value={row.weight_unit || 'lb'}
                                                 onChange={(e) => handleUpdateRow(row.id, 'weight_unit', e.target.value)}
-                                                className="w-full min-w-[70px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             >
                                                 <option value="lb">lb</option>
                                                 <option value="kg">kg</option>
