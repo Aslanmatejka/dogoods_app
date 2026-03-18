@@ -585,10 +585,10 @@ function ImpactDataEntry() {
                         <p className="mt-4 text-gray-600">Loading data...</p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-lg shadow overflow-x-auto">
+                    <div className="bg-white rounded-lg shadow overflow-x-auto overflow-y-auto" style={{maxHeight: 'calc(100vh - 280px)'}}>
                         {activeTab === 'organizations' ? (
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50 sticky top-0">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
                                             Date
@@ -737,7 +737,7 @@ function ImpactDataEntry() {
                             </table>
                         ) : (
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50 sticky top-0">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
                                             Date
