@@ -36,6 +36,7 @@ class AuthService {
     this._initPromise = null
     this._initialized = false
     this._userExplicitlySignedOut = false
+    this._signingIn = false
 
     // Restore from localStorage if available (synchronous, immediate)
     const storedUser = localStorage.getItem('currentUser')
@@ -87,7 +88,10 @@ class AuthService {
           return
         } else if (event === 'SIGNED_IN' && session) {
           this._userExplicitlySignedOut = false
-          await this.setUser(session.user)
+          // Skip if signIn() is already handling setUser to avoid duplicate calls
+          if (!this._signingIn) {
+            await this.setUser(session.user)
+          }
         } else if (event === 'TOKEN_REFRESHED' && session) {
           await this.setUser(session.user)
         } else if (event === 'PASSWORD_RECOVERY' && session) {
@@ -123,6 +127,19 @@ class AuthService {
       if (error && error.code !== 'PGRST116') {
         // PGRST116 is "no rows returned" - this is expected for new users
         console.error('Error fetching user profile:', error)
+        // Fall back to auth-only data so the user can still log in
+        this.currentUser = {
+          ...user,
+          name: user.user_metadata?.name || user.email,
+          account_type: user.user_metadata?.account_type || 'individual',
+          role: 'user',
+          status: 'active'
+        }
+        this.isAuthenticated = true
+        this.isAdmin = false
+        localStorage.setItem('userAuthenticated', 'true')
+        localStorage.setItem('currentUser', JSON.stringify(this.currentUser))
+        this.notifyListeners()
         return
       }
 
@@ -275,13 +292,22 @@ class AuthService {
   }
 
   async signIn(email, password) {
+    this._signingIn = true
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
-      if (error) throw error
+      if (error) {
+        // Supabase auth errors have a message property, but ensure it exists
+        if (!error.message) error.message = error.msg || error.error_description || 'Authentication failed'
+        throw error
+      }
+
+      if (!data?.user) {
+        throw new Error('No user data received from login')
+      }
 
       // Update local state immediately so auth context is ready before navigation
       await this.setUser(data.user)
@@ -290,7 +316,11 @@ class AuthService {
     } catch (error) {
       console.error('Sign in error:', error)
       reportError(error)
-      throw error
+      // Ensure the thrown error always has a message
+      if (error instanceof Error) throw error
+      throw new Error(error?.message || error?.msg || String(error) || 'Authentication failed')
+    } finally {
+      this._signingIn = false
     }
   }
 

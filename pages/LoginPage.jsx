@@ -98,16 +98,27 @@ function LoginPage() {
             // the useEffect will fire automatically
         } catch (error) {
             console.error('Login error:', error);
-            setSubmitting(false);
+            console.warn('Login error details:', { type: typeof error, message: error?.message, name: error?.name, code: error?.code, status: error?.status, raw: error });
+            
+            // Extract error message from any possible format
+            const msg = error?.message || error?.msg || error?.error_description || 
+                        (typeof error === 'string' ? error : null) ||
+                        (error ? String(error) : 'An unexpected error occurred. Please try again.');
             
             // Handle specific Supabase auth errors
-            if (error.message.includes('Invalid login credentials')) {
+            if (msg.includes('Invalid login credentials')) {
                 setError('Invalid email or password');
-            } else if (error.message.includes('Email not confirmed')) {
+            } else if (msg.includes('Email not confirmed')) {
                 setError('Please check your email and confirm your account before signing in.');
+            } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+                setError('Network error. Please check your connection and try again.');
+            } else if (msg.includes('Too many requests') || msg.includes('rate limit')) {
+                setError('Too many login attempts. Please wait a moment and try again.');
             } else {
-                setError('An error occurred during login. Please try again.');
+                setError(msg);
             }
+        } finally {
+            setSubmitting(false);
         }
     };
 
