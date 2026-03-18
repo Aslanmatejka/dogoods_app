@@ -225,8 +225,9 @@ function AdminShareFood() {
             const communityId = newRowRefs.current.community_id?.value;
             const title = newRowRefs.current.title?.value?.trim();
             const quantity = parseFloat(newRowRefs.current.quantity?.value) || 0;
-            const unit = newRowRefs.current.unit?.value || 'lb';
-            const pickupBy = newRowRefs.current.pickup_by?.value || null;
+            const unit = newRowRefs.current.unit?.value || 'items';
+            const weightPerPackage = parseFloat(newRowRefs.current.weight_per_package?.value) || null;
+            const weightUnit = newRowRefs.current.weight_unit?.value || null;
             const expiryDate = newRowRefs.current.expiry_date?.value || null;
             const fullAddress = newRowRefs.current.full_address?.value?.trim() || '';
             const donorName = newRowRefs.current.donor_name?.value?.trim() || 'DoGoods Admin';
@@ -245,8 +246,10 @@ function AdminShareFood() {
                 category: 'produce',
                 quantity,
                 unit,
+                weight_per_package: weightPerPackage,
+                weight_unit: weightUnit,
                 community_id: parseInt(communityId, 10),
-                pickup_by: pickupBy ? new Date(pickupBy + 'T17:00:00').toISOString() : null,
+                pickup_by: null,
                 expiry_date: expiryDate || null,
                 full_address: fullAddress || null,
                 location: geo.location,
@@ -272,8 +275,9 @@ function AdminShareFood() {
             if (newRowRefs.current.community_id) newRowRefs.current.community_id.value = '';
             if (newRowRefs.current.title) newRowRefs.current.title.value = '';
             if (newRowRefs.current.quantity) newRowRefs.current.quantity.value = '';
-            if (newRowRefs.current.unit) newRowRefs.current.unit.value = 'lb';
-            if (newRowRefs.current.pickup_by) newRowRefs.current.pickup_by.value = getNextFriday();
+            if (newRowRefs.current.unit) newRowRefs.current.unit.value = 'items';
+            if (newRowRefs.current.weight_per_package) newRowRefs.current.weight_per_package.value = '';
+            if (newRowRefs.current.weight_unit) newRowRefs.current.weight_unit.value = 'lb';
             if (newRowRefs.current.expiry_date) newRowRefs.current.expiry_date.value = getNextFriday();
             if (newRowRefs.current.full_address) newRowRefs.current.full_address.value = '';
             if (newRowRefs.current.donor_name) newRowRefs.current.donor_name.value = '';
@@ -328,14 +332,15 @@ function AdminShareFood() {
 
     // Export CSV
     const exportToCSV = () => {
-        const headers = ['Date', 'Community', 'Food Name', 'Quantity', 'Unit', 'Pickup By', 'Expiry Date', 'Pickup Address', 'Donor', 'Description'];
+        const headers = ['Date', 'Community', 'Food Name', 'Quantity', 'Packaging', 'Weight/Package', 'Units', 'Expiry Date', 'Pickup Address', 'Donor', 'Description'];
         const rows = filteredData.map(row => [
             row.created_at ? new Date(row.created_at).toLocaleDateString() : '',
             communityName(row.community_id),
             row.title || '',
             row.quantity || 0,
-            row.unit || 'lb',
-            row.pickup_by ? new Date(row.pickup_by).toLocaleDateString() : '',
+            row.unit || 'items',
+            row.weight_per_package ?? '',
+            row.weight_unit || '',
             row.expiry_date || '',
             row.full_address || '',
             row.donor_name || '',
@@ -456,8 +461,11 @@ function AdminShareFood() {
                                     <th className="px-3 py-3 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[100px]">
                                         Packaging
                                     </th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-orange-600 uppercase tracking-wider min-w-[160px]">
-                                        Pickup By
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[110px]">
+                                        Weight/Package
+                                    </th>
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                                        Units
                                     </th>
                                     <th className="px-3 py-3 text-left text-xs font-medium text-orange-600 uppercase tracking-wider min-w-[160px]">
                                         Expiry Date
@@ -535,11 +543,23 @@ function AdminShareFood() {
                                     </td>
                                     <td className="px-3 py-2">
                                         <UncontrolledCell
-                                            type="date"
-                                            defaultValue={getNextFriday()}
-                                            inputRef={el => newRowRefs.current.pickup_by = el}
+                                            type="number"
+                                            defaultValue=""
+                                            inputRef={el => newRowRefs.current.weight_per_package = el}
                                             onBlur={() => {}}
+                                            className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
                                         />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        <select
+                                            ref={el => newRowRefs.current.weight_unit = el}
+                                            defaultValue="lb"
+                                            className="w-full min-w-[70px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                        >
+                                            <option value="lb">lb</option>
+                                            <option value="kg">kg</option>
+                                            <option value="oz">oz</option>
+                                        </select>
                                     </td>
                                     <td className="px-3 py-2">
                                         <UncontrolledCell
@@ -632,10 +652,22 @@ function AdminShareFood() {
                                         </td>
                                         <td className="px-3 py-2">
                                             <UncontrolledCell
-                                                type="date"
-                                                defaultValue={row.pickup_by ? row.pickup_by.split('T')[0] : ''}
-                                                onBlur={(val) => handleUpdateRow(row.id, 'pickup_by', val ? new Date(val + 'T17:00:00').toISOString() : null)}
+                                                type="number"
+                                                defaultValue={row.weight_per_package ?? ''}
+                                                onBlur={(val) => handleUpdateRow(row.id, 'weight_per_package', val !== '' ? parseFloat(val) : null)}
+                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <select
+                                                value={row.weight_unit || 'lb'}
+                                                onChange={(e) => handleUpdateRow(row.id, 'weight_unit', e.target.value)}
+                                                className="w-full min-w-[70px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                            >
+                                                <option value="lb">lb</option>
+                                                <option value="kg">kg</option>
+                                                <option value="oz">oz</option>
+                                            </select>
                                         </td>
                                         <td className="px-3 py-2">
                                             <UncontrolledCell
@@ -676,7 +708,7 @@ function AdminShareFood() {
 
                                 {filteredData.length === 0 && (
                                     <tr>
-                                        <td colSpan="11" className="px-6 py-8 text-center text-gray-500">
+                                        <td colSpan="12" className="px-6 py-8 text-center text-gray-500">
                                             No food listings yet. Add your first entry using the row above.
                                         </td>
                                     </tr>
