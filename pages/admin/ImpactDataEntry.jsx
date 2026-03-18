@@ -100,6 +100,13 @@ function ImpactDataEntry() {
         }
     };
 
+    // Safety: if refreshing gets stuck true (e.g. network stall), force-reset after 20s
+    React.useEffect(() => {
+        if (!refreshing) return;
+        const id = setTimeout(() => setRefreshing(false), 20000);
+        return () => clearTimeout(id);
+    }, [refreshing]);
+
     const fetchData = async (isRefresh = false) => {
         try {
             if (isRefresh) {
@@ -108,26 +115,23 @@ function ImpactDataEntry() {
                 setLoading(true);
             }
 
-            // Add a timeout to prevent infinite loading
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-            const { data: impactData, error } = await supabase
+            // Use Promise.race so the timeout is guaranteed to fire even if
+            // the Supabase fetch hangs indefinitely (network stall, dropped connection).
+            // AbortController + .abortSignal() can silently fail in some network conditions.
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timed out after 15s')), 15000)
+            );
+            const queryPromise = supabase
                 .from('impact_data')
                 .select('*')
-                .order('date', { ascending: false })
-                .abortSignal(controller.signal);
+                .order('date', { ascending: false });
 
-            clearTimeout(timeoutId);
+            const { data: impactData, error } = await Promise.race([queryPromise, timeoutPromise]);
 
             if (error) throw error;
             setData(impactData || []);
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.error('Fetch timed out after 15 seconds');
-            } else {
-                console.error('Error fetching impact data:', error);
-            }
+            console.error('Error fetching impact data:', error);
             // Keep existing data on refresh failure, clear on initial load failure
             if (!isRefresh) {
                 setData([]);
