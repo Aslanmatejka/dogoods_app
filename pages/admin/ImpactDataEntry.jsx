@@ -460,7 +460,7 @@ function ImpactDataEntry() {
                     const value = type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value;
                     onBlur(value);
                 }}
-                className={className || "w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"}
+                className={className || "w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"}
             />
         );
     };
@@ -585,27 +585,27 @@ function ImpactDataEntry() {
                         <p className="mt-4 text-gray-600">Loading data...</p>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-lg shadow overflow-x-auto overflow-y-auto" style={{maxHeight: 'calc(100vh - 280px)'}}>
+                    <div className="bg-white rounded-lg shadow overflow-x-auto overflow-y-auto text-xs" style={{maxHeight: 'calc(100vh - 280px)'}}>
                         {activeTab === 'organizations' ? (
-                            <table className="min-w-full divide-y divide-gray-200">
+                            <table className="min-w-full divide-y divide-gray-200 [&_td]:px-1 [&_td]:py-1">
                                 <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[110px]">
                                             Date
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[280px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                                             Organization
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[110px]">
-                                            Food Saved from Waste (lb)
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[90px]">
+                                            Food Saved (lb)
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[110px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-[#2CABE3] uppercase tracking-wider min-w-[80px]">
                                             Food Donated
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[300px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
                                             Notes
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[50px]">
                                             Actions
                                         </th>
                                     </tr>
@@ -623,7 +623,7 @@ function ImpactDataEntry() {
                                         <td className="px-3 py-2">
                                             <select
                                                 ref={el => orgRowRefs.current.organization = el}
-                                                className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             >
                                                 <option value="">Select Organization</option>
                                                 {organizations.map((org) => (
@@ -639,7 +639,7 @@ function ImpactDataEntry() {
                                                 defaultValue=""
                                                 inputRef={el => orgRowRefs.current.food_saved_from_waste_lb = el}
                                                 onBlur={() => { }}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
@@ -648,7 +648,7 @@ function ImpactDataEntry() {
                                                 defaultValue=""
                                                 inputRef={el => orgRowRefs.current.food_donated = el}
                                                 onBlur={() => { }}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
@@ -682,7 +682,7 @@ function ImpactDataEntry() {
                                                 <select
                                                     value={row.organization || ''}
                                                     onChange={(e) => handleUpdateRow(row.id, 'organization', e.target.value)}
-                                                    className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                                 >
                                                     <option value="">Select Organization</option>
                                                     {organizations.map((org) => (
@@ -697,7 +697,7 @@ function ImpactDataEntry() {
                                                     type="number"
                                                     defaultValue={row.food_saved_from_waste_lb || 0}
                                                     onBlur={(val) => handleUpdateRow(row.id, 'food_saved_from_waste_lb', val)}
-                                                    className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
@@ -705,7 +705,7 @@ function ImpactDataEntry() {
                                                     type="number"
                                                     defaultValue={row.food_donated || 0}
                                                     onBlur={(val) => handleUpdateRow(row.id, 'food_donated', val)}
-                                                    className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
@@ -736,28 +736,28 @@ function ImpactDataEntry() {
                                 </tbody>
                             </table>
                         ) : (
-                            <table className="min-w-full divide-y divide-gray-200">
+                            <table className="min-w-full divide-y divide-gray-200 [&_td]:px-1 [&_td]:py-1">
                                 <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[220px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[110px]">
                                             Date
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[280px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                                             Community
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider min-w-[100px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-blue-600 uppercase tracking-wider min-w-[80px]">
                                             Families Helped
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider min-w-[100px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-blue-600 uppercase tracking-wider min-w-[90px]">
                                             School Staff Helped
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-orange-600 uppercase tracking-wider min-w-[110px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-orange-600 uppercase tracking-wider min-w-[80px]">
                                             Food Given (lb)
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[300px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
                                             Notes
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[50px]">
                                             Actions
                                         </th>
                                     </tr>
@@ -775,7 +775,7 @@ function ImpactDataEntry() {
                                         <td className="px-3 py-2">
                                             <select
                                                 ref={el => communityRowRefs.current.communities_served = el}
-                                                className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
                                             >
                                                 <option value="">Select Community</option>
                                                 {communities.map((community) => (
@@ -791,7 +791,7 @@ function ImpactDataEntry() {
                                                 defaultValue=""
                                                 inputRef={el => communityRowRefs.current.families_helped = el}
                                                 onBlur={() => { }}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
@@ -800,7 +800,7 @@ function ImpactDataEntry() {
                                                 defaultValue=""
                                                 inputRef={el => communityRowRefs.current.school_staff_helped = el}
                                                 onBlur={() => { }}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
@@ -809,7 +809,7 @@ function ImpactDataEntry() {
                                                 defaultValue=""
                                                 inputRef={el => communityRowRefs.current.food_given_lb = el}
                                                 onBlur={() => { }}
-                                                className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                             />
                                         </td>
                                         <td className="px-3 py-2">
@@ -843,7 +843,7 @@ function ImpactDataEntry() {
                                                 <select
                                                     value={row.communities_served || ''}
                                                     onChange={(e) => handleUpdateRow(row.id, 'communities_served', e.target.value)}
-                                                    className="w-full min-w-[200px] px-3 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
                                                 >
                                                     <option value="">Select Community</option>
                                                     {communities.map((community) => (
@@ -858,7 +858,7 @@ function ImpactDataEntry() {
                                                     type="number"
                                                     defaultValue={row.families_helped || 0}
                                                     onBlur={(val) => handleUpdateRow(row.id, 'families_helped', val)}
-                                                    className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
@@ -866,7 +866,7 @@ function ImpactDataEntry() {
                                                     type="number"
                                                     defaultValue={row.school_staff_helped || 0}
                                                     onBlur={(val) => handleUpdateRow(row.id, 'school_staff_helped', val)}
-                                                    className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
@@ -874,7 +874,7 @@ function ImpactDataEntry() {
                                                     type="number"
                                                     defaultValue={row.food_given_lb || 0}
                                                     onBlur={(val) => handleUpdateRow(row.id, 'food_given_lb', val)}
-                                                    className="w-full min-w-[80px] px-2 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#2CABE3] focus:border-transparent"
+                                                className="w-full px-1 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-[#2CABE3] focus:border-transparent"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
