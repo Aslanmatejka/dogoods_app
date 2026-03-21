@@ -206,15 +206,15 @@ function AdminProfile() {
                                     <div className="flex items-center mb-8">
                                         <div className="mr-6">
                                             <Avatar
-                                                src={profile?.avatar}
+                                                src={authUser?.avatar_url}
                                                 size="xl"
                                             />
                                         </div>
                                         <div>
-                                            <h2 className="text-xl font-semibold">{profile?.name}</h2>
-                                            <p className="text-gray-600">{profile?.email}</p>
+                                            <h2 className="text-xl font-semibold">{authUser?.name || 'Admin'}</h2>
+                                            <p className="text-gray-600">{authUser?.email}</p>
                                             <p className="text-sm text-gray-500 mt-1">
-                                                Role: {profile?.role?.charAt(0).toUpperCase() + profile?.role?.slice(1)}
+                                                Role: {authUser?.is_admin ? 'Admin' : 'User'}
                                             </p>
                                         </div>
                                     </div>
@@ -225,26 +225,26 @@ function AdminProfile() {
                                             <div className="space-y-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-500">Account ID</label>
-                                                    <p className="mt-1">{profile?.id}</p>
+                                                    <p className="mt-1">{authUser?.id}</p>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-500">Join Date</label>
-                                                    <p className="mt-1">{formatDate(profile?.joinDate)}</p>
+                                                    <p className="mt-1">{formatDate(authUser?.created_at)}</p>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-500">Last Login</label>
                                                     <p className="mt-1">Today at {new Date().toLocaleTimeString()}</p>
                                                 </div>
-                                                {profile?.phone && (
+                                                {authUser?.phone && (
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-500">Phone</label>
-                                                        <p className="mt-1">{profile.phone}</p>
+                                                        <p className="mt-1">{authUser.phone}</p>
                                                     </div>
                                                 )}
-                                                {profile?.bio && (
+                                                {authUser?.bio && (
                                                     <div>
                                                         <label className="block text-sm font-medium text-gray-500">Bio</label>
-                                                        <p className="mt-1">{profile.bio}</p>
+                                                        <p className="mt-1">{authUser.bio}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -274,8 +274,8 @@ function AdminProfile() {
                                     <div className="mt-8 pt-8 border-t">
                                         <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
                                         <div className="space-y-4">
-                                            {profile?.recentActivity?.length > 0 ? (
-                                                profile.recentActivity.map((activity, index) => (
+                                            {authUser?.recentActivity?.length > 0 ? (
+                                                authUser.recentActivity.map((activity, index) => (
                                                     <div key={index} className="flex items-start">
                                                         <div className={`mt-1 ${activity.iconColor || 'text-gray-500'}`}>
                                                             <i className={`fas ${activity.icon || 'fa-circle'}`}></i>

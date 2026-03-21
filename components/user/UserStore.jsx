@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../common/Button';
-import { FoodCard } from '../food/FoodCard';
+import Button from '../common/Button';
+import FoodCard from '../food/FoodCard';
 import { reportError } from '../../utils/helpers';
 
 
