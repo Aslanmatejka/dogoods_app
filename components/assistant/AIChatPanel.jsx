@@ -238,12 +238,14 @@ function AIChatPanel() {
   const [voiceMode, setVoiceMode] = useState(false)
   const [isVoiceListening, setIsVoiceListening] = useState(false)
   const [isVoiceSpeaking, setIsVoiceSpeaking] = useState(false)
+  const [voiceError, setVoiceError] = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const panelRef = useRef(null)
   const mediaRecorderRef = useRef(null)
   const currentAudioRef = useRef(null)
   const lastSpokenIdRef = useRef(null)
+  const voiceRecognitionRef = useRef(null)
 
   // Last assistant message for voice mode auto-speak
   const lastAssistantMessage = useMemo(() => {
@@ -299,6 +301,7 @@ function AIChatPanel() {
     setVoiceMode(false)
     setIsVoiceSpeaking(false)
     setIsVoiceListening(false)
+    setVoiceError(null)
     if (mediaRecorderRef.current) {
       const { mediaRecorder, stream, audioCtx } = mediaRecorderRef.current
       if (mediaRecorder.state === 'recording') mediaRecorder.stop()
@@ -306,14 +309,60 @@ function AIChatPanel() {
       audioCtx.close().catch(() => {})
       mediaRecorderRef.current = null
     }
+    if (voiceRecognitionRef.current) {
+      voiceRecognitionRef.current.abort()
+      voiceRecognitionRef.current = null
+    }
     if (currentAudioRef.current) {
       currentAudioRef.current()
       currentAudioRef.current = null
     }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
   }, [])
 
-  // Auto-listen: record audio via MediaRecorder → send to OpenAI Whisper
+  // ─── Fallback: browser SpeechRecognition STT ───────
+  const startBrowserListening = useCallback(() => {
+    const SpeechRecognition = typeof window !== 'undefined'
+      ? window.SpeechRecognition || window.webkitSpeechRecognition
+      : null
+    if (!SpeechRecognition) return false
+
+    if (voiceRecognitionRef.current) voiceRecognitionRef.current.abort()
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = language === 'es' ? 'es-ES' : 'en-US'
+    recognition.interimResults = false
+    recognition.continuous = false
+    recognition.maxAlternatives = 1
+
+    let transcript = ''
+
+    recognition.onstart = () => setIsVoiceListening(true)
+    recognition.onresult = (event) => {
+      const result = event.results[event.results.length - 1]
+      if (result.isFinal) transcript = result[0].transcript.trim()
+    }
+    recognition.onend = () => {
+      setIsVoiceListening(false)
+      voiceRecognitionRef.current = null
+      if (transcript) sendMessage(transcript)
+    }
+    recognition.onerror = () => {
+      setIsVoiceListening(false)
+      voiceRecognitionRef.current = null
+    }
+
+    voiceRecognitionRef.current = recognition
+    recognition.start()
+    return true
+  }, [language, sendMessage])
+
+  // ─── Primary: MediaRecorder → Whisper STT ───────
   const startVoiceListening = useCallback(async () => {
+    setVoiceError(null)
+
     try {
       // Stop any existing recording
       if (mediaRecorderRef.current) {
@@ -324,7 +373,16 @@ function AIChatPanel() {
         mediaRecorderRef.current = null
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      let stream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      } catch (micErr) {
+        console.warn('Microphone access denied, falling back to browser speech recognition')
+        if (!startBrowserListening()) {
+          setVoiceError(language === 'es' ? 'No se pudo acceder al micrófono' : 'Could not access microphone')
+        }
+        return
+      }
 
       // AudioContext for silence detection
       const audioCtx = new AudioContext()
@@ -333,9 +391,17 @@ function AIChatPanel() {
       analyser.fftSize = 512
       source.connect(analyser)
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      })
+      // Pick a supported mime type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : ''
+
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
+
       const chunks = []
 
       mediaRecorder.ondataavailable = (e) => {
@@ -349,29 +415,37 @@ function AIChatPanel() {
         setIsVoiceListening(false)
 
         if (chunks.length === 0) return
-        const audioBlob = new Blob(chunks, { type: mediaRecorder.mimeType })
+        const audioBlob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' })
+
+        // Only transcribe if blob is > 1KB (avoid sending silence/noise)
+        if (audioBlob.size < 1000) return
+
         try {
           const transcript = await transcribeAudio(audioBlob, language)
           if (transcript.trim()) sendMessage(transcript.trim())
         } catch (err) {
-          console.error('Whisper transcription failed:', err)
+          console.warn('Whisper failed, trying browser speech recognition:', err.message)
+          // Whisper failed — next cycle will try again; no hard error
         }
       }
 
-      mediaRecorder.start()
+      // Start recording with 250ms timeslice for periodic data
+      mediaRecorder.start(250)
       setIsVoiceListening(true)
       mediaRecorderRef.current = { mediaRecorder, stream, audioCtx, analyser }
 
-      // Silence detection via RMS analysis
+      // ─── Silence detection ───────
       const dataArray = new Uint8Array(analyser.frequencyBinCount)
       let silenceStart = null
       let hasSpoken = false
-      const SILENCE_THRESHOLD = 8
-      const SILENCE_DURATION = 1500
-      let animFrameId = null
+      const startTime = Date.now()
+      const SILENCE_THRESHOLD = 5
+      const SILENCE_DURATION = 1800
+      const MIN_RECORD_MS = 800
 
       const checkSilence = () => {
         if (!mediaRecorderRef.current || mediaRecorder.state !== 'recording') return
+
         analyser.getByteTimeDomainData(dataArray)
         let sum = 0
         for (let i = 0; i < dataArray.length; i++) {
@@ -383,40 +457,48 @@ function AIChatPanel() {
         if (rms > SILENCE_THRESHOLD) {
           hasSpoken = true
           silenceStart = null
-        } else if (hasSpoken) {
+        } else if (hasSpoken && (Date.now() - startTime) > MIN_RECORD_MS) {
           if (!silenceStart) silenceStart = Date.now()
           else if (Date.now() - silenceStart > SILENCE_DURATION) {
             mediaRecorder.stop()
             return
           }
         }
-        animFrameId = requestAnimationFrame(checkSilence)
+        requestAnimationFrame(checkSilence)
       }
 
-      setTimeout(() => { animFrameId = requestAnimationFrame(checkSilence) }, 300)
+      // Start silence detection after short delay
+      setTimeout(() => requestAnimationFrame(checkSilence), 400)
 
-      // Safety timeout: 30s max recording
+      // Safety timeout: 15s max recording
       setTimeout(() => {
-        if (mediaRecorder.state === 'recording') mediaRecorder.stop()
-      }, 30000)
+        if (mediaRecorderRef.current && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop()
+        }
+      }, 15000)
 
     } catch (err) {
-      console.error('Microphone access failed:', err)
+      console.error('Voice listening failed:', err)
       setIsVoiceListening(false)
+      // Try fallback
+      if (!startBrowserListening()) {
+        setVoiceError(language === 'es' ? 'Micrófono no disponible' : 'Microphone not available')
+      }
     }
-  }, [language, sendMessage])
+  }, [language, sendMessage, startBrowserListening])
 
-  // Auto-start listening when entering voice mode
+  // Auto-start listening when voice mode is active and not busy
   useEffect(() => {
-    if (voiceMode && !isVoiceSpeaking && !isLoading && !isVoiceListening) {
-      const timer = setTimeout(() => startVoiceListening(), 500)
-      return () => clearTimeout(timer)
-    }
-  }, [voiceMode, isVoiceSpeaking, isLoading])
+    if (!voiceMode || isVoiceSpeaking || isLoading || isVoiceListening) return
+    const timer = setTimeout(() => startVoiceListening(), 600)
+    return () => clearTimeout(timer)
+  }, [voiceMode, isVoiceSpeaking, isLoading, isVoiceListening, startVoiceListening])
 
   // OpenAI TTS: speak latest assistant message in voice mode
+  // Skip the initial welcome message — only speak new responses
   useEffect(() => {
     if (!voiceMode || !lastAssistantMessage || isLoading) return
+    if (lastAssistantMessage.id === 'welcome') return
     if (lastAssistantMessage.id === lastSpokenIdRef.current) return
     lastSpokenIdRef.current = lastAssistantMessage.id
 
@@ -457,6 +539,10 @@ function AIChatPanel() {
         stream.getTracks().forEach(t => t.stop())
         audioCtx.close().catch(() => {})
         mediaRecorderRef.current = null
+      }
+      if (voiceRecognitionRef.current) {
+        voiceRecognitionRef.current.abort()
+        voiceRecognitionRef.current = null
       }
       if (currentAudioRef.current) {
         currentAudioRef.current()
@@ -767,7 +853,7 @@ function AIChatPanel() {
 
           {/* Status label */}
           <p className={`text-xs transition-all duration-500 ${
-            isVoiceSpeaking ? 'text-cyan-300/70' : isVoiceListening ? 'text-blue-300/70' : isLoading ? 'text-slate-400' : 'text-slate-500/50'
+            isVoiceSpeaking ? 'text-cyan-300/70' : isVoiceListening ? 'text-blue-300/70' : isLoading ? 'text-slate-400' : voiceError ? 'text-red-400/70' : 'text-slate-500/50'
           }`}>
             {isVoiceSpeaking
               ? (language === 'es' ? 'Hablando...' : 'Speaking...')
@@ -775,8 +861,20 @@ function AIChatPanel() {
                 ? (language === 'es' ? 'Pensando...' : 'Thinking...')
                 : isVoiceListening
                   ? (language === 'es' ? 'Escuchando...' : 'Listening...')
-                  : ''}
+                  : voiceError
+                    ? voiceError
+                    : (language === 'es' ? 'Toca para hablar' : 'Tap to speak')}
           </p>
+
+          {/* Manual listen button — visible when idle */}
+          {!isVoiceListening && !isVoiceSpeaking && !isLoading && (
+            <button
+              onClick={() => startVoiceListening()}
+              className="mt-3 px-4 py-2 rounded-full bg-cyan-500/20 text-cyan-300 text-xs border border-cyan-500/30 hover:bg-cyan-500/30 transition-colors"
+            >
+              🎙 {language === 'es' ? 'Hablar' : 'Speak'}
+            </button>
+          )}
 
         </div>
       ) : (

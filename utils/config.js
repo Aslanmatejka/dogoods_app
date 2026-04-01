@@ -7,7 +7,7 @@ const VITE_ENV = typeof import.meta !== 'undefined' && import.meta.env ? import.
 // API Configuration
 const API_CONFIG = {
     OPENAI: {
-        API_KEY: ENV.OPENAI_API_KEY || VITE_ENV.OPENAI_API_KEY || '',
+        API_KEY: ENV.OPENAI_API_KEY || VITE_ENV.VITE_OPENAI_API_KEY || VITE_ENV.OPENAI_API_KEY || '',
         API_ENDPOINT: ENV.OPENAI_API_ENDPOINT || 'https://api.openai.com/v1',
         TIMEOUT: parseInt(ENV.API_TIMEOUT) || 30000, // 30 seconds
         MAX_RETRIES: parseInt(ENV.API_MAX_RETRIES) || 3,

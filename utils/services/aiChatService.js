@@ -1,62 +1,92 @@
-import supabase from '../supabaseClient.js'
+import { getApiConfig } from '../config.js'
 import { reportError } from '../helpers.js'
 import dataService from '../dataService.js'
 
+const SYSTEM_PROMPT = `You are Nouri, the AI assistant for DoGoods — a community food sharing platform by the All Good Living Foundation. You help people find food, share food, and reduce waste in their neighborhoods.
+
+Your personality: warm, helpful, community-focused, practical. You speak simply and clearly. You celebrate small acts of generosity. You never judge anyone for needing food — food sharing is community care, not charity.
+
+You can help with:
+- Finding nearby food listings and distribution events
+- Suggesting recipes from available or claimed items
+- Food storage and safety tips
+- Explaining how DoGoods works
+- Answering questions in English and Spanish
+
+IMPORTANT RULES:
+- Never share other users' personal information
+- Never make up food listings — only recommend the Find Food page
+- For food safety questions, always err on the side of caution
+- Keep responses concise (2-4 sentences for simple questions, more for recipes)
+- Never recommend dumpster diving, expired food consumption, or unsafe food recovery
+- If someone mentions a medical condition, advise them to consult a healthcare provider
+
+If the user writes in Spanish, respond entirely in Spanish. Use informal 'tú' form.
+
+DoGoods works like this:
+1. SHARE: Donors post food listings with details and pickup info
+2. FIND: Recipients browse nearby listings filtered by category, diet, distance
+3. CLAIM: Recipients claim items — donor gets notified
+4. PICKUP: Recipient picks up food at the listed location
+5. COMMUNITY: Local communities organize distribution events
+
+Website: dogoods.store | Tagline: Share food. Build community. Do good.`
+
 class AIChatService {
-  constructor() {
-    this._supabaseUrl = null
-  }
-
-  _getSupabaseUrl() {
-    if (!this._supabaseUrl) {
-      this._supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-    }
-    return this._supabaseUrl
-  }
-
   /**
-   * Send a message to the AI chat Edge Function
-   * @param {string} message - User's message text
-   * @param {Object} options - { conversationHistory, userLocation }
-   * @returns {Promise<{response: string, tool_results: Array, suggested_actions: Array}>}
+   * Send a message to OpenAI directly
    */
   async sendMessage(message, { conversationHistory = [], userLocation = null } = {}) {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const config = getApiConfig().OPENAI
+      const apiKey = config.API_KEY
 
-      const headers = {
-        'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+      if (!apiKey || !apiKey.startsWith('sk-')) {
+        throw new Error('OpenAI API key not configured')
       }
 
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
+      let systemContent = SYSTEM_PROMPT
+      if (userLocation) {
+        systemContent += `\n\nUser's approximate GPS location: ${userLocation.latitude}, ${userLocation.longitude}`
       }
 
-      const response = await fetch(
-        `${this._getSupabaseUrl()}/functions/v1/ai-chat`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            message,
-            conversation_history: conversationHistory.slice(-20),
-            user_location: userLocation,
-          }),
-        }
-      )
+      const messages = [
+        { role: 'system', content: systemContent },
+        ...conversationHistory.slice(-20).map(msg => ({
+          role: msg.role,
+          content: msg.message || msg.content,
+        })),
+        { role: 'user', content: message },
+      ]
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: config.MODELS?.CHAT || 'gpt-4o-mini',
+          messages,
+          temperature: 0.7,
+          max_tokens: 1500,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('OpenAI API error:', response.status, errorText)
+        throw new Error(`AI service error: ${response.status}`)
+      }
 
       const data = await response.json()
-
-      if (!response.ok && !data.response) {
-        throw new Error(data.error || `AI service error: ${response.status}`)
-      }
+      const responseText = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again."
 
       return {
-        response: data.response,
-        toolResults: data.tool_results || [],
-        suggestedActions: data.suggested_actions || [],
-        error: data.error || null,
+        response: responseText,
+        toolResults: [],
+        suggestedActions: [],
+        error: null,
       }
     } catch (error) {
       console.error('AI chat service error:', error)
