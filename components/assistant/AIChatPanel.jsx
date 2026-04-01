@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspens
 import { useNavigate } from 'react-router-dom'
 import { useAIChat } from '../../utils/hooks/useAIChat.js'
 import VoiceOutput from './VoiceOutput.jsx'
-import { transcribeAudio, textToSpeech, playAudioBlob } from '../../utils/openaiVoice.js'
+import { textToSpeech, playAudioBlob } from '../../utils/openaiVoice.js'
 
 // ─── Quick action presets ─────────────────────────────
 const QUICK_ACTIONS_EN = [
@@ -242,10 +242,10 @@ function AIChatPanel() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const panelRef = useRef(null)
-  const mediaRecorderRef = useRef(null)
   const currentAudioRef = useRef(null)
   const lastSpokenIdRef = useRef(null)
   const voiceRecognitionRef = useRef(null)
+  const voiceModeRef = useRef(false)
 
   // Last assistant message for voice mode auto-speak
   const lastAssistantMessage = useMemo(() => {
@@ -295,22 +295,17 @@ function AIChatPanel() {
 
   const enterVoiceMode = useCallback(() => {
     setVoiceMode(true)
+    voiceModeRef.current = true
   }, [])
 
   const exitVoiceMode = useCallback(() => {
     setVoiceMode(false)
+    voiceModeRef.current = false
     setIsVoiceSpeaking(false)
     setIsVoiceListening(false)
     setVoiceError(null)
-    if (mediaRecorderRef.current) {
-      const { mediaRecorder, stream, audioCtx } = mediaRecorderRef.current
-      if (mediaRecorder.state === 'recording') mediaRecorder.stop()
-      stream.getTracks().forEach(t => t.stop())
-      audioCtx.close().catch(() => {})
-      mediaRecorderRef.current = null
-    }
     if (voiceRecognitionRef.current) {
-      voiceRecognitionRef.current.abort()
+      try { voiceRecognitionRef.current.abort() } catch {}
       voiceRecognitionRef.current = null
     }
     if (currentAudioRef.current) {
@@ -322,14 +317,24 @@ function AIChatPanel() {
     }
   }, [])
 
-  // ─── Fallback: browser SpeechRecognition STT ───────
-  const startBrowserListening = useCallback(() => {
+  // ─── Voice listening via browser SpeechRecognition ───────
+  const startVoiceListening = useCallback(() => {
+    setVoiceError(null)
+
     const SpeechRecognition = typeof window !== 'undefined'
       ? window.SpeechRecognition || window.webkitSpeechRecognition
       : null
-    if (!SpeechRecognition) return false
 
-    if (voiceRecognitionRef.current) voiceRecognitionRef.current.abort()
+    if (!SpeechRecognition) {
+      setVoiceError(language === 'es' ? 'Reconocimiento de voz no soportado' : 'Speech recognition not supported in this browser')
+      return
+    }
+
+    // Stop any existing recognition
+    if (voiceRecognitionRef.current) {
+      try { voiceRecognitionRef.current.abort() } catch {}
+      voiceRecognitionRef.current = null
+    }
 
     const recognition = new SpeechRecognition()
     recognition.lang = language === 'es' ? 'es-ES' : 'en-US'
@@ -337,160 +342,64 @@ function AIChatPanel() {
     recognition.continuous = false
     recognition.maxAlternatives = 1
 
-    let transcript = ''
+    let gotResult = false
 
-    recognition.onstart = () => setIsVoiceListening(true)
+    recognition.onstart = () => {
+      setIsVoiceListening(true)
+    }
+
     recognition.onresult = (event) => {
       const result = event.results[event.results.length - 1]
-      if (result.isFinal) transcript = result[0].transcript.trim()
+      if (result.isFinal) {
+        const text = result[0].transcript.trim()
+        if (text) {
+          gotResult = true
+          sendMessage(text)
+        }
+      }
     }
+
     recognition.onend = () => {
       setIsVoiceListening(false)
       voiceRecognitionRef.current = null
-      if (transcript) sendMessage(transcript)
+      // If user spoke, we're now waiting for AI — don't auto-restart
+      // The auto-listen effect will handle restart after TTS finishes
     }
-    recognition.onerror = () => {
+
+    recognition.onerror = (event) => {
       setIsVoiceListening(false)
       voiceRecognitionRef.current = null
+
+      if (event.error === 'aborted') {
+        // Intentional — do nothing
+      } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setVoiceError(language === 'es' ? 'Permiso de micrófono denegado' : 'Microphone permission denied')
+      } else if (event.error === 'no-speech') {
+        // User didn't speak — that's ok, auto-listen will restart
+      } else {
+        console.warn('Speech recognition error:', event.error)
+      }
     }
 
     voiceRecognitionRef.current = recognition
-    recognition.start()
-    return true
+    try {
+      recognition.start()
+    } catch (err) {
+      console.error('Could not start speech recognition:', err)
+      setIsVoiceListening(false)
+      setVoiceError(language === 'es' ? 'No se pudo iniciar' : 'Could not start listening')
+    }
   }, [language, sendMessage])
 
-  // ─── Primary: MediaRecorder → Whisper STT ───────
-  const startVoiceListening = useCallback(async () => {
-    setVoiceError(null)
-
-    try {
-      // Stop any existing recording
-      if (mediaRecorderRef.current) {
-        const { mediaRecorder, stream, audioCtx } = mediaRecorderRef.current
-        if (mediaRecorder.state === 'recording') mediaRecorder.stop()
-        stream.getTracks().forEach(t => t.stop())
-        audioCtx.close().catch(() => {})
-        mediaRecorderRef.current = null
-      }
-
-      let stream
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      } catch (micErr) {
-        console.warn('Microphone access denied, falling back to browser speech recognition')
-        if (!startBrowserListening()) {
-          setVoiceError(language === 'es' ? 'No se pudo acceder al micrófono' : 'Could not access microphone')
-        }
-        return
-      }
-
-      // AudioContext for silence detection
-      const audioCtx = new AudioContext()
-      const source = audioCtx.createMediaStreamSource(stream)
-      const analyser = audioCtx.createAnalyser()
-      analyser.fftSize = 512
-      source.connect(analyser)
-
-      // Pick a supported mime type
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : ''
-
-      const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream)
-
-      const chunks = []
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data)
-      }
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop())
-        audioCtx.close().catch(() => {})
-        mediaRecorderRef.current = null
-        setIsVoiceListening(false)
-
-        if (chunks.length === 0) return
-        const audioBlob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' })
-
-        // Only transcribe if blob is > 1KB (avoid sending silence/noise)
-        if (audioBlob.size < 1000) return
-
-        try {
-          const transcript = await transcribeAudio(audioBlob, language)
-          if (transcript.trim()) sendMessage(transcript.trim())
-        } catch (err) {
-          console.warn('Whisper failed, trying browser speech recognition:', err.message)
-          // Whisper failed — next cycle will try again; no hard error
-        }
-      }
-
-      // Start recording with 250ms timeslice for periodic data
-      mediaRecorder.start(250)
-      setIsVoiceListening(true)
-      mediaRecorderRef.current = { mediaRecorder, stream, audioCtx, analyser }
-
-      // ─── Silence detection ───────
-      const dataArray = new Uint8Array(analyser.frequencyBinCount)
-      let silenceStart = null
-      let hasSpoken = false
-      const startTime = Date.now()
-      const SILENCE_THRESHOLD = 5
-      const SILENCE_DURATION = 1800
-      const MIN_RECORD_MS = 800
-
-      const checkSilence = () => {
-        if (!mediaRecorderRef.current || mediaRecorder.state !== 'recording') return
-
-        analyser.getByteTimeDomainData(dataArray)
-        let sum = 0
-        for (let i = 0; i < dataArray.length; i++) {
-          const val = (dataArray[i] - 128) / 128
-          sum += val * val
-        }
-        const rms = Math.sqrt(sum / dataArray.length) * 100
-
-        if (rms > SILENCE_THRESHOLD) {
-          hasSpoken = true
-          silenceStart = null
-        } else if (hasSpoken && (Date.now() - startTime) > MIN_RECORD_MS) {
-          if (!silenceStart) silenceStart = Date.now()
-          else if (Date.now() - silenceStart > SILENCE_DURATION) {
-            mediaRecorder.stop()
-            return
-          }
-        }
-        requestAnimationFrame(checkSilence)
-      }
-
-      // Start silence detection after short delay
-      setTimeout(() => requestAnimationFrame(checkSilence), 400)
-
-      // Safety timeout: 15s max recording
-      setTimeout(() => {
-        if (mediaRecorderRef.current && mediaRecorder.state === 'recording') {
-          mediaRecorder.stop()
-        }
-      }, 15000)
-
-    } catch (err) {
-      console.error('Voice listening failed:', err)
-      setIsVoiceListening(false)
-      // Try fallback
-      if (!startBrowserListening()) {
-        setVoiceError(language === 'es' ? 'Micrófono no disponible' : 'Microphone not available')
-      }
-    }
-  }, [language, sendMessage, startBrowserListening])
-
-  // Auto-start listening when voice mode is active and not busy
+  // Auto-start listening when voice mode is active and completely idle
+  // Only restart if: in voice mode, NOT speaking, NOT loading AI, NOT already listening
   useEffect(() => {
     if (!voiceMode || isVoiceSpeaking || isLoading || isVoiceListening) return
-    const timer = setTimeout(() => startVoiceListening(), 600)
+    const timer = setTimeout(() => {
+      if (voiceModeRef.current && !voiceRecognitionRef.current) {
+        startVoiceListening()
+      }
+    }, 1200)
     return () => clearTimeout(timer)
   }, [voiceMode, isVoiceSpeaking, isLoading, isVoiceListening, startVoiceListening])
 
@@ -533,15 +442,9 @@ function AIChatPanel() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current) {
-        const { mediaRecorder, stream, audioCtx } = mediaRecorderRef.current
-        if (mediaRecorder.state === 'recording') mediaRecorder.stop()
-        stream.getTracks().forEach(t => t.stop())
-        audioCtx.close().catch(() => {})
-        mediaRecorderRef.current = null
-      }
+      voiceModeRef.current = false
       if (voiceRecognitionRef.current) {
-        voiceRecognitionRef.current.abort()
+        try { voiceRecognitionRef.current.abort() } catch {}
         voiceRecognitionRef.current = null
       }
       if (currentAudioRef.current) {
