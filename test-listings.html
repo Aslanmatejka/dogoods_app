@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Food Listings</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Food Listings Query</h1>
+    <div id="result"></div>
+    
+    <script>
+        const supabaseUrl = 'https://ifzbpqyuhnxbhdcnmvfs.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmemJwcXl1aG54YmhkY25tdmZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU0MjgwMjIsImV4cCI6MjA1MTAwNDAyMn0.xDWa9mDr36uSlUuZfW4lC0iPr-vQKHbGCnGQbvlxIBw';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        async function testQuery() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                // Test 1: Simple query
+                console.log('Test 1: Simple query for approved listings');
+                const { data: data1, error: error1 } = await supabase
+                    .from('food_listings')
+                    .select('*')
+                    .eq('status', 'approved')
+                    .limit(6);
+                    
+                console.log('Simple query result:', { data: data1, error: error1 });
+                
+                // Test 2: Query with user join
+                console.log('Test 2: Query with user join');
+                const { data: data2, error: error2 } = await supabase
+                    .from('food_listings')
+                    .select(`
+                        *,
+                        users:user_id (
+                            id,
+                            name,
+                            avatar_url,
+                            organization,
+                            email
+                        )
+                    `)
+                    .eq('status', 'approved')
+                    .limit(6);
+                    
+                console.log('Query with join result:', { data: data2, error: error2 });
+                
+                if (error1) {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${error1.message}</p>`;
+                } else if (data1 && data1.length > 0) {
+                    resultDiv.innerHTML = `
+                        <p style="color: green;">✓ Found ${data1.length} approved listing(s)</p>
+                        <pre>${JSON.stringify(data2 || data1, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<p style="color: orange;">No listings found</p>';
+                }
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = `<p style="color: red;">Exception: ${error.message}</p>`;
+            }
+        }
+        
+        testQuery();
+    </script>
+</body>
+</html>

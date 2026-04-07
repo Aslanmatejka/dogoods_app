@@ -1,0 +1,29 @@
+{
+  "name": "dogoods-supabase-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for DoGoods Supabase database access",
+  "type": "module",
+  "main": "supabase-server.js",
+  "bin": {
+    "dogoods-supabase-mcp": "./supabase-server.js"
+  },
+  "scripts": {
+    "start": "node supabase-server.js",
+    "dev": "nodemon supabase-server.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "supabase",
+    "dogoods"
+  ],
+  "author": "DoGoods Team",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
