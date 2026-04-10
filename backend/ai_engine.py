@@ -36,16 +36,10 @@ logger = logging.getLogger("ai_engine")
 # ---------------------------------------------------------------------------
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "") or os.getenv("VITE_OPENAI_API_KEY", "")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 
-# OpenAI is primary for conversation engine (GPT-4o, Whisper, TTS)
+# All AI calls use OpenAI (GPT-4o, Whisper, TTS)
 OPENAI_BASE_URL = "https://api.openai.com/v1"
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
-
-# Legacy API key resolution (for matching/recipe endpoints that use DeepSeek)
-LEGACY_API_KEY = DEEPSEEK_API_KEY or OPENAI_API_KEY
-LEGACY_BASE_URL = DEEPSEEK_BASE_URL if DEEPSEEK_API_KEY else OPENAI_BASE_URL
-DEFAULT_MODEL = os.getenv("AI_MODEL", "deepseek-chat")
+DEFAULT_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
 
 # Conversation engine models (OpenAI)
 CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "gpt-4o")
@@ -245,8 +239,8 @@ async def _ai_request(
     """Make an HTTP request to an AI API with retries and circuit breaker."""
     import asyncio
 
-    effective_key = api_key or LEGACY_API_KEY
-    effective_base = base_url or LEGACY_BASE_URL
+    effective_key = api_key or OPENAI_API_KEY
+    effective_base = base_url or OPENAI_BASE_URL
 
     if not effective_key:
         raise RuntimeError("AI API key is not configured")
@@ -1030,5 +1024,5 @@ conversation_engine = ConversationEngine()
 # ---------------------------------------------------------------------------
 
 async def legacy_ai_request(endpoint: str, payload: dict) -> dict:
-    """Call DeepSeek/OpenAI for legacy routes (recipes, storage tips, etc.)."""
+    """Call OpenAI for legacy routes (recipes, storage tips, etc.)."""
     return await _ai_request(endpoint, payload)

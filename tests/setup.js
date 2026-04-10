@@ -13,12 +13,6 @@ global.fetch = jest.fn(() =>
   }),
 );
 
-// Mock window objects that might not exist in test environment
-Object.defineProperty(window, 'DEEPSEEK_API_KEY', {
-  writable: true,
-  value: 'sk-test-key-for-testing'
-});
-
 // Clear all mocks before each test
 beforeEach(() => {
   jest.clearAllMocks();

@@ -41,7 +41,7 @@ from backend.ai_engine import (
     supabase_post,
     SUPABASE_URL,
     SUPABASE_SERVICE_KEY,
-    LEGACY_API_KEY,
+    OPENAI_API_KEY,
     DEFAULT_MODEL,
 )
 
@@ -664,7 +664,7 @@ async def ai_transcribe(
 async def health() -> dict:
     return {
         "status": "ok",
-        "ai_configured": bool(LEGACY_API_KEY),
+        "ai_configured": bool(OPENAI_API_KEY),
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
         "circuit_state": _circuit.state.value,
     }
@@ -672,7 +672,7 @@ async def health() -> dict:
 
 @app.post("/api/chat")
 async def chat(body: LegacyChatRequest, request: Request) -> dict:
-    """Legacy chat proxy (DeepSeek / OpenAI direct passthrough)."""
+    """Legacy chat proxy (OpenAI direct passthrough)."""
     _enforce_rate_limit(request)
 
     payload = {
