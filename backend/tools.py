@@ -374,6 +374,120 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_user_notifications",
+            "description": (
+                "Retrieve a user's notifications and alerts. Returns recent "
+                "notifications including food claim updates, trade requests, "
+                "system alerts, and community announcements. Can filter by "
+                "read/unread status and notification type."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "description": "The user's UUID to fetch notifications for",
+                    },
+                    "unread_only": {
+                        "type": "boolean",
+                        "description": "If true, return only unread notifications (default false)",
+                        "default": False,
+                    },
+                    "notification_type": {
+                        "type": "string",
+                        "description": (
+                            "Optional filter by type: 'system', 'food_claimed', "
+                            "'trade_request', 'claim_approved', 'claim_declined', "
+                            "'submission_declined', or 'alert'"
+                        ),
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max notifications to return (default 20)",
+                        "default": 20,
+                    },
+                },
+                "required": ["user_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "send_notification",
+            "description": (
+                "Send a notification or alert to a user. Use this to notify users "
+                "about important events like expiring food, upcoming distribution "
+                "events, claim status changes, community updates, or custom alerts. "
+                "The notification appears in the user's notification center."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "description": "The recipient user's UUID",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Short notification title (e.g. 'Food Expiring Soon')",
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "The full notification message body",
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": (
+                            "Notification type: 'system', 'food_claimed', "
+                            "'trade_request', 'claim_approved', 'claim_declined', "
+                            "'submission_declined', or 'alert'"
+                        ),
+                        "default": "system",
+                    },
+                    "data": {
+                        "type": "object",
+                        "description": (
+                            "Optional extra data as JSON (e.g. {\"listing_id\": \"...\", "
+                            "\"action_url\": \"/find-food\"})"
+                        ),
+                    },
+                },
+                "required": ["user_id", "title", "message"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mark_notifications_read",
+            "description": (
+                "Mark one or all of a user's notifications as read. "
+                "Can mark a single notification by ID or all unread "
+                "notifications for a user at once."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "description": "The user's UUID",
+                    },
+                    "notification_id": {
+                        "type": "string",
+                        "description": (
+                            "Optional specific notification UUID to mark as read. "
+                            "If omitted, marks ALL unread notifications as read."
+                        ),
+                    },
+                },
+                "required": ["user_id"],
+            },
+        },
+    },
 ]
 
 
@@ -395,6 +509,9 @@ async def execute_tool(name: str, arguments: dict) -> dict:
         "get_recipes": _get_recipes,
         "get_storage_tips": _get_storage_tips,
         "get_active_communities": _get_active_communities,
+        "get_user_notifications": _get_user_notifications,
+        "send_notification": _send_notification,
+        "mark_notifications_read": _mark_notifications_read,
     }
 
     handler = handlers.get(name)
@@ -1521,3 +1638,171 @@ async def _get_active_communities(
         "total": len(results),
         "summary": summary,
     }
+
+
+# ---------------------------------------------------------------------------
+# get_user_notifications
+# ---------------------------------------------------------------------------
+
+async def _get_user_notifications(
+    user_id: str,
+    unread_only: bool = False,
+    notification_type: str | None = None,
+    limit: int = 20,
+) -> dict:
+    """Fetch a user's notifications with optional filters."""
+    from backend.ai_engine import supabase_get
+
+    logger.info(
+        "get_user_notifications: user=%s unread_only=%s type=%s",
+        user_id, unread_only, notification_type,
+    )
+
+    params: dict = {
+        "user_id": f"eq.{user_id}",
+        "select": "id,title,message,type,read,data,created_at",
+        "order": "created_at.desc",
+        "limit": str(min(limit, 50)),
+    }
+    if unread_only:
+        params["read"] = "eq.false"
+    if notification_type:
+        params["type"] = f"eq.{notification_type}"
+
+    try:
+        rows = await supabase_get("notifications", params)
+    except Exception as exc:
+        logger.error("Failed to fetch notifications: %s", exc)
+        return {"error": f"Could not fetch notifications: {str(exc)}"}
+
+    if not rows:
+        return {
+            "notifications": [],
+            "total": 0,
+            "unread_count": 0,
+            "summary": "You have no notifications.",
+        }
+
+    unread = sum(1 for r in rows if not r.get("read"))
+
+    summary_parts = [f"You have {len(rows)} notification{'s' if len(rows) != 1 else ''}"]
+    if unread:
+        summary_parts.append(f"{unread} unread")
+    summary = ", ".join(summary_parts) + "."
+
+    return {
+        "notifications": rows,
+        "total": len(rows),
+        "unread_count": unread,
+        "summary": summary,
+    }
+
+
+# ---------------------------------------------------------------------------
+# send_notification
+# ---------------------------------------------------------------------------
+
+async def _send_notification(
+    user_id: str,
+    title: str,
+    message: str,
+    type: str = "system",
+    data: dict | None = None,
+) -> dict:
+    """Create a notification for a user."""
+    import httpx
+    from backend.ai_engine import SUPABASE_URL, SUPABASE_SERVICE_KEY
+
+    logger.info("send_notification: user=%s title=%s type=%s", user_id, title, type)
+
+    allowed_types = {
+        "system", "food_claimed", "trade_request",
+        "claim_approved", "claim_declined", "submission_declined", "alert",
+    }
+    if type not in allowed_types:
+        type = "system"
+
+    payload = {
+        "user_id": user_id,
+        "title": title,
+        "message": message,
+        "type": type,
+        "read": False,
+        "data": data or {},
+    }
+
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation,resolution=ignore-duplicates",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                f"{SUPABASE_URL}/rest/v1/notifications",
+                json=payload,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+    except Exception as exc:
+        logger.error("Failed to send notification: %s", exc)
+        return {"error": f"Could not send notification: {str(exc)}"}
+
+    row = result[0] if isinstance(result, list) and result else result
+    return {
+        "success": True,
+        "notification_id": row.get("id") if isinstance(row, dict) else None,
+        "summary": f"Notification '{title}' sent successfully.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# mark_notifications_read
+# ---------------------------------------------------------------------------
+
+async def _mark_notifications_read(
+    user_id: str,
+    notification_id: str | None = None,
+) -> dict:
+    """Mark notification(s) as read via Supabase REST PATCH."""
+    import httpx
+    from backend.ai_engine import SUPABASE_URL, SUPABASE_SERVICE_KEY
+
+    logger.info(
+        "mark_notifications_read: user=%s notif_id=%s",
+        user_id, notification_id,
+    )
+
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+    base = f"{SUPABASE_URL}/rest/v1/notifications"
+    params = {"user_id": f"eq.{user_id}", "read": "eq.false"}
+    if notification_id:
+        params["id"] = f"eq.{notification_id}"
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.patch(
+                base, headers=headers, params=params, json={"read": True}
+            )
+            resp.raise_for_status()
+            updated = resp.json()
+    except Exception as exc:
+        logger.error("Failed to mark notifications read: %s", exc)
+        return {"error": f"Could not update notifications: {str(exc)}"}
+
+    count = len(updated) if isinstance(updated, list) else 0
+    if notification_id:
+        summary = "Notification marked as read." if count else "Notification not found or already read."
+    else:
+        summary = f"Marked {count} notification{'s' if count != 1 else ''} as read."
+
+    return {"success": True, "updated_count": count, "summary": summary}
