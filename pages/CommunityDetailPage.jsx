@@ -8,7 +8,7 @@ import { useAuthContext } from '../utils/AuthContext';
 function CommunityDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuthContext();
+    const { isAuthenticated, user } = useAuthContext();
     const [community, setCommunity] = useState(null);
     const [foodListings, setFoodListings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -103,6 +103,11 @@ function CommunityDetailPage() {
         );
     }
 
+    const WAREHOUSE_COMMUNITY_ID = 1;
+    const canViewListings = !isAuthenticated || 
+        String(id) === String(WAREHOUSE_COMMUNITY_ID) || 
+        String(user?.community_id) === String(id);
+
     const foodGivenValue = Math.round(parseFloat(community.food_given_lb) || 0);
     const familiesHelpedValue = parseInt(community.families_helped) || 0;
     const schoolStaffHelpedValue = parseInt(community.school_staff_helped) || 0;
@@ -184,7 +189,8 @@ function CommunityDetailPage() {
                 </div>
             </div>
 
-            {/* Food Listings Section */}
+            {/* Food Listings Section — only visible to members of this community or for the warehouse */}
+            {canViewListings && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -222,6 +228,7 @@ function CommunityDetailPage() {
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 }
