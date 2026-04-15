@@ -62,6 +62,13 @@ const DistributionAttendees = () => {
     try {
       setLoading(true);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('No active Supabase session — skipping fetch');
+        setLoading(false);
+        return;
+      }
+
       const { data: claims, error } = await supabase
         .from('food_claims')
         .select(`
@@ -73,7 +80,7 @@ const DistributionAttendees = () => {
             phone,
             avatar_url
           ),
-          food_listings(
+          food_listing:food_listings!food_id(
             id,
             title,
             quantity,
@@ -252,14 +259,14 @@ const DistributionAttendees = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">
-                        {claim.food_listings?.title || 'N/A'}
+                        {claim.food_listing?.title || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {claim.quantity || 0} {claim.food_listings?.unit || ''}
+                      {claim.quantity || 0} {claim.food_listing?.unit || ''}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {claim.food_listings?.community_id ? (communities[claim.food_listings.community_id] || 'Unknown') : 'N/A'}
+                      {claim.food_listing?.community_id ? (communities[claim.food_listing.community_id] || 'Unknown') : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {claim.people || 0} people
