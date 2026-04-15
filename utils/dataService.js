@@ -591,6 +591,14 @@ class DataService {
         }
       }
 
+      // Validate expiry_date is not in the past
+      if (listingData.expiry_date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expiry = new Date(listingData.expiry_date + 'T00:00:00');
+        if (expiry < today) throw new Error('Expiry date cannot be in the past');
+      }
+
       // Build clean listing object with only valid food_listings columns
       const listing = {
         title: listingData.title,
@@ -618,11 +626,11 @@ class DataService {
         dietary_tags: listingData.dietary_tags || [],
         allergens: listingData.allergens || [],
         ingredients: listingData.ingredients || null,
-        location: listingData.donor_city && listingData.donor_state ? {
-          address: `${listingData.donor_city}, ${listingData.donor_state} ${listingData.donor_zip || ''}`.trim(),
+        location: listingData.donor_city || listingData.donor_state ? {
+          address: [listingData.donor_city, listingData.donor_state, listingData.donor_zip].filter(Boolean).join(', ').trim(),
           latitude: listingData.latitude,
           longitude: listingData.longitude
-        } : null
+        } : (listingData.full_address || null)
       };
 
       // Use direct REST API to avoid Supabase JS client auth issues

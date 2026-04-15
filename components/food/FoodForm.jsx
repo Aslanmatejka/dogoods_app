@@ -298,6 +298,12 @@ function FoodForm({
         if (!formData.category) newErrors.category = 'Category is required';
         // Expiry date required only if not produce
         if (formData.category !== 'produce' && !formData.expiry_date) newErrors.expiry_date = 'Expiry date is required';
+        if (formData.expiry_date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const expiry = new Date(formData.expiry_date + 'T00:00:00');
+            if (expiry < today) newErrors.expiry_date = 'Expiry date cannot be in the past';
+        }
         if (!formData.donor_type) newErrors.donor_type = 'Please select donor type';
         if (!formData.donor_name) newErrors.donor_name = 'Name/Organization is required';
         if (!formData.donor_zip) newErrors.donor_zip = 'ZIP code is required';

@@ -253,6 +253,11 @@ function AdminShareFood() {
             if (!communityId) { alert('⚠️ Please select a community.'); return; }
             if (quantity < 1) { alert('⚠️ Quantity must be at least 1.'); return; }
             if (expiryDate && !isValidDate(expiryDate)) { alert('⚠️ Invalid Expiry Date. Please enter a real calendar date.'); return; }
+            if (expiryDate) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (new Date(expiryDate + 'T00:00:00') < today) { alert('⚠️ Expiry date cannot be in the past.'); return; }
+            }
 
             setAdding(true);
 

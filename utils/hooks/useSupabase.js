@@ -145,13 +145,28 @@ export const useFoodListings = (filters = {}, limit = null) => {
 
   // Real-time subscription
   useEffect(() => {
+    const allowedStatuses = filters.status
+      ? (Array.isArray(filters.status) ? filters.status : [filters.status])
+      : null;
+
     const subscription = dataService.subscribeToFoodListings((payload) => {
       if (payload.eventType === 'INSERT') {
+        // Only add if the new listing matches the status filter
+        if (allowedStatuses && !allowedStatuses.includes(payload.new?.status)) return;
         setListings(prev => [payload.new, ...prev])
       } else if (payload.eventType === 'UPDATE') {
-        setListings(prev => prev.map(listing => 
-          listing.id === payload.new.id ? payload.new : listing
-        ))
+        const matchesFilter = !allowedStatuses || allowedStatuses.includes(payload.new?.status);
+        if (matchesFilter) {
+          // Upsert: update if exists, add if newly matching
+          setListings(prev => {
+            const exists = prev.some(l => l.id === payload.new.id);
+            if (exists) return prev.map(l => l.id === payload.new.id ? payload.new : l);
+            return [payload.new, ...prev];
+          })
+        } else {
+          // Status no longer matches — remove from list
+          setListings(prev => prev.filter(l => l.id !== payload.new.id))
+        }
       } else if (payload.eventType === 'DELETE') {
         setListings(prev => prev.filter(listing => listing.id !== payload.old.id))
       }
@@ -160,7 +175,7 @@ export const useFoodListings = (filters = {}, limit = null) => {
     return () => {
       dataService.unsubscribe('food_listings')
     }
-  }, [])
+  }, [JSON.stringify(filters.status)])
 
   const createListing = useCallback(async (listingData) => {
     try {

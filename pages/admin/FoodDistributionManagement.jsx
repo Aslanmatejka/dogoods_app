@@ -17,6 +17,7 @@ const formatDate = (dateString) => {
 function FoodDistributionManagement() {
     const [listings, setListings] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
+    const [communities, setCommunities] = React.useState({});
     const [stats, setStats] = React.useState({
         total: 0,
         available: 0,
@@ -25,6 +26,7 @@ function FoodDistributionManagement() {
     });
 
     React.useEffect(() => {
+        fetchCommunities();
         fetchListings();
 
         const subscription = supabase
@@ -47,6 +49,21 @@ function FoodDistributionManagement() {
             supabase.removeChannel(subscription);
         };
     }, []);
+
+    const fetchCommunities = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('communities')
+                .select('id, name')
+                .order('name', { ascending: true });
+            if (error) throw error;
+            const map = {};
+            (data || []).forEach(c => { map[c.id] = c.name; });
+            setCommunities(map);
+        } catch (err) {
+            console.error('Error fetching communities:', err);
+        }
+    };
 
     const fetchListings = async () => {
         try {
@@ -204,6 +221,9 @@ function FoodDistributionManagement() {
                                             Quantity
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Community
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Expiry Date
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -244,6 +264,9 @@ function FoodDistributionManagement() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {listing.quantity} {listing.unit || ''}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {listing.community_id ? (communities[listing.community_id] || 'Unknown') : 'N/A'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {listing.expiry_date ? formatDate(listing.expiry_date) : 'N/A'}

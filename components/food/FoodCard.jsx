@@ -40,6 +40,7 @@ function FoodCard({
         unit,
         expiry_date,
         location,
+        full_address,
         users,
         donor_name,
         donor_city,
@@ -99,25 +100,17 @@ function FoodCard({
             title={title}
             subtitle={
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                            <Avatar 
-                                src={donor && donor.avatar ? donor.avatar : undefined} 
-                                size="sm" 
-                                alt={`${donor && donor.name ? donor.name : 'Donor'}'s avatar`}
-                            />
-                            <span className="text-sm text-gray-600">{donor && donor.name ? donor.name : 'Unknown Donor'}</span>
-                        </div>
+                    <div className="flex items-center justify-end">
                         <div className="flex items-center text-sm text-gray-600">
                             <i className="fas fa-map-marker-alt text-gray-400 mr-2" aria-hidden="true"></i>
                             <span>
-                                {donor_city && donor_state ? 
-                                    `${donor_city}, ${donor_state}` :
+                                {donor_city || donor_state ? 
+                                    [donor_city, donor_state].filter(Boolean).join(', ') :
                                     (typeof location === 'object' && location?.address ? 
                                         location.address :
-                                        (typeof location === 'string' ? 
+                                        (typeof location === 'string' && location ? 
                                             location : 
-                                            'No location available')
+                                            (full_address || 'No location available'))
                                     )}
                             </span>
                             {distance && <span className="ml-1 text-gray-500">({formatDistance(distance)})</span>}
@@ -125,7 +118,7 @@ function FoodCard({
                     </div>
                     <div className="flex items-center space-x-2 flex-wrap gap-2">
                         <UrgencyIndicator foodListing={food} />
-                        {food.verification_status && (
+                        {food.verification_status && food.verification_status !== 'pending' && (
                             <VerificationStatus status={food.verification_status} compact={true} />
                         )}
                         <span
