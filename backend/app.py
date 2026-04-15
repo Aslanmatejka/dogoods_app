@@ -675,6 +675,8 @@ async def ai_voice(
         result["transcript"] = transcript
         return result
 
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions (e.g. noise filter 400) as-is
     except httpx.TimeoutException:
         # Whisper or GPT-4o timed out — suggest text input
         raise HTTPException(
